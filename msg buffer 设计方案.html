@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>High-Performance MsgBuffer 核心设计与内存生命周期文档</title>
+    <style>
+        body { font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; line-height: 1.8; color: #2c3e50; max-width: 1100px; margin: 0 auto; padding: 30px; background-color: #f9fbff; }
+        h1 { text-align: center; color: #1a3a5f; border-bottom: 3px solid #3498db; padding-bottom: 15px; }
+        h2 { color: #2980b9; margin-top: 40px; border-left: 6px solid #3498db; padding-left: 15px; background: #ecf0f1; padding-top: 5px; padding-bottom: 5px; }
+        h3 { color: #16a085; margin-top: 25px; }
+        .card { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 25px; }
+        code { background-color: #fdf2f2; color: #c0392b; border-radius: 4px; padding: 2px 6px; font-family: "Consolas", monospace; font-size: 0.95em; }
+        pre { background: #2d3436; color: #dfe6e9; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 14px; line-height: 1.5; border: 1px solid #636e72; }
+        .important { color: #e67e22; font-weight: bold; }
+        .process-flow { background: #f0f9ff; border: 1px dashed #3498db; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .footer { text-align: center; margin-top: 50px; color: #95a5a6; font-size: 0.85em; }
+        .highlight-box { border: 1px solid #3498db; padding: 15px; background-color: #f0f7ff; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>High-Performance MsgBuffer 核心设计文档 (V3.2)</h1>
+
+    <div class="card">
+        <h2>一、 核心设计思想：极致性能的源泉</h2>
+        <p>MsgBuffer 的核心目标是解决 C++ 在超高并发场景下的<strong>内存申请抖动</strong>与<strong>锁竞争瓶颈</strong>。其设计哲学可概括为：</p>
+        <ul>
+            <li><span class="important">空间换时间：</span>初始化时一次性申请 4K 对齐的大块连续物理内存，运行时零系统调用。</li>
+            <li><span class="important">本地化优先：</span>通过 TLC（Thread Local Cache）将 99% 的操作锁定在线程内部，彻底消除了原子操作的跨核同步开销。</li>
+            <li><span class="important">确定性防御：</span>利用强类型的原子状态机（FREE/BUSY）和引用计数，强制规避 Double-Free 和野指针风险。</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>二、 核心原语：get() 与 release() 的深度解析</h2>
+        <p>这是系统的资源心脏。所有高性能特性的基石都在于如何快速“拿”和如何安全“还”。</p>
+
+        <h3>1. 资源获取：get() 的三级寻找算法</h3>
+        <p>当业务调用 <code>pool.get()</code> 时，系统按以下优先级寻找单元，直到成功：</p>
+        <div class="process-flow">
+            <strong>L1 (TLC Stack):</strong> 检查当前线程本地栈。<code>无锁</code>，仅需一次 CPU 寄存器级别的指针移动。 <br>
+            <strong>L2 (Remote Inbox):</strong> 若 L1 枯竭，原子交换 (Atomic Exchange) 检查“远程信箱”。这是其他线程归还给本线程的资源，采用 <code>CAS 无锁链表</code>。<br>
+            <strong>L3 (Global Pool):</strong> 若以上皆无，加锁从全局池“批发”一批单元（通常为 64 个）填充到 L1。
+        </div>
+
+        <h3>2. 资源归还：release() 的智能回流逻辑</h3>
+        <p>归还操作不仅仅是释放内存，它包含了复杂的拓扑感知逻辑：</p>
+        <ul>
+            <li><strong>同源释放：</strong> 若释放线程即为申请线程，直接压回 L1 栈。速度极快，保持热缓存（Warm Cache）。</li>
+            <li><strong>跨线程归还：</strong> 若释放线程非申请线程（生产者-消费者模型），则将单元投递到申请线程的 <strong>Remote Inbox</strong>。这种设计避免了将资源直接丢回全局池带来的锁争用。</li>
+            <li><strong>强制水位回收：</strong> 当全局池水位低于 5% 的临界点时，系统强制取消 TLC 留存，所有释放动作直达全局池。</li>
+        </ul>
+    </div>
+
+    
+
+    <div class="card">
+        <h2>三、 物理层与逻辑层的解耦设计</h2>
+        <p>系统通过两种不同的实体来平衡“物理安全”与“逻辑灵活性”：</p>
+        
+        <h3>1. x_buf_unit_t (物理层)</h3>
+        <p>代表一块真实的 4KB 物理空间。它持有 <code>ref</code> (引用计数) 和 <code>state</code> (原子状态)。</p>
+        <div class="highlight-box">
+            <strong>关键点：</strong> 业务层不直接操作 unit 指针，而是通过 <code>x_buf_ptr</code> (RAII) 进行自动引用计数管理。当计数归零时，自动触发 <code>unit->release()</code>。
+        </div>
+
+        <h3>2. x_msg_t (逻辑视图层)</h3>
+        <p>不持有内存，只持有 <code>segment</code>（unit 的 offset + length 视图）。</p>
+        <ul>
+            <li><strong>copy_in:</strong> 在现有 unit 的空闲物理位点追加数据，不足时才通过全局 pool 申领。</li>
+            <li><strong>copy_out:</strong> 遍历分散的 segment，将其物理内容聚合拷贝到连续的目标空间。</li>
+        </ul>
+    </div>
+
+    
+
+    <div class="card">
+        <h2>四、 关键代码实现：原子状态转换</h2>
+        <pre>
+// release 内部的核心原子防护逻辑
+void x_buf_unit_t::release() {
+    // 1. 引用计数递减至 0 才能进入回收逻辑
+    if (ref.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        UnitState expected = UnitState::BUSY;
+        // 2. CAS 切换状态，防止并发 double-free
+        if (!state.compare_exchange_strong(expected, UnitState::FREE, std::memory_order_acq_rel)) {
+            X_PANIC("FATAL: Double-Free or invalid state transition!");
+        }
+        // 3. 进入三级回收逻辑（TLC -> Inbox -> Global）
+        owner_pool->release(this); 
+    }
+}
+        </pre>
+    </div>
+
+    <div class="card">
+        <h2>五、 监控指标：系统运行的“仪表盘”</h2>
+        <p>为了保证生产环境的可维护性，系统暴露了以下监控维度：</p>
+        <ul>
+            <li><code>get_tlc_count()</code>: 反映当前线程的繁忙程度。若持续为 0，说明该线程消费速度低于生产速度。</li>
+            <li><code>get_global_count()</code>: 全局剩余容量。是触发系统级流控（Back-pressure）的核心依据。</li>
+        </ul>
+    </div>
+
+    <div class="footer">
+        High-Performance MsgBuffer Architecture | 极致性能 · 工业级可靠性 <br>
+        &copy; 2023 设计文档 V3.2
+    </div>
+
+</body>
+</html>
