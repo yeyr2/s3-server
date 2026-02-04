@@ -218,4 +218,4 @@ bool MetaStore::delete_object(int64_t bucket_id, const std::string& key) {
     return true;
 }
 
-} // namespace meta
+} 

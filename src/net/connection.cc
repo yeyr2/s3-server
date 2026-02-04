@@ -6,10 +6,22 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
+#include <strings.h>
 
 namespace net {
 
 static const size_t kMaxHeader = 65536;
+
+// static bool str_equal_nocase(const char* a, const char* b, size_t n) {
+//     for (size_t i = 0; i < n; ++i) {
+//         unsigned char u = static_cast<unsigned char>(a[i]);
+//         unsigned char v = static_cast<unsigned char>(b[i]);
+//         if (u >= 'A' && u <= 'Z') u += 32;
+//         if (v >= 'A' && v <= 'Z') v += 32;
+//         if (u != v) return false;
+//     }
+//     return true;
+// }
 
 int read_request(int fd, x_msg_t& msg, x_buf_pool_t& pool, int64_t& content_length_out) {
     msg.clear();
@@ -48,7 +60,8 @@ int read_request(int fd, x_msg_t& msg, x_buf_pool_t& pool, int64_t& content_leng
     size_t cl_len = 15;
     p = linear.data();
     while (p + cl_len <= linear.data() + len) {
-        if (std::strncasecmp(p, cl_key, cl_len) == 0) {
+        if(strncasecmp(p, cl_key, cl_len)){
+        // if (str_equal_nocase(p, cl_key, cl_len)) {
             p += cl_len;
             while (p < linear.data() + len && (*p == ' ' || *p == '\t')) ++p;
             int64_t v = 0;
@@ -89,4 +102,4 @@ void close_fd(int fd) {
     if (fd >= 0) close(fd);
 }
 
-} // namespace net
+} 
