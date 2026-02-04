@@ -20,7 +20,7 @@ static std::string hmac_sha1_base64(const std::string& key, const std::string& d
     return std::string(reinterpret_cast<char*>(buf), static_cast<size_t>(n));
 }
 
-bool verify_query_signature(const HttpRequest& req, const s3config::Config& config) {
+bool verify_query_signature(const http::HttpRequest& req, const s3config::Config& config) {
     std::string access_key = req.get_query_param("AWSAccessKeyId");
     std::string sig_from_client = req.get_query_param("Signature");
     std::string expires_str = req.get_query_param("Expires");

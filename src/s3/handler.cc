@@ -81,7 +81,7 @@ static void write_list_xml_from_meta(x_msg_t& out, x_buf_pool_t& pool,
     out.copy_in(pool, body.data(), total);
 }
 
-bool handle_request(const HttpRequest& req, const s3config::Config& config,
+bool handle_request(const http::HttpRequest& req, const s3config::Config& config,
     meta::MetaStore& store, x_msg_t& out, x_buf_pool_t& pool, const x_msg_t* body_msg) {
     std::string bucket_name, object_key;
     parse_path(req.path, bucket_name, object_key);
