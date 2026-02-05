@@ -1,6 +1,8 @@
 #ifndef S3_NET_CONNECTION_H
 #define S3_NET_CONNECTION_H
 
+#include <cstdint>
+
 struct x_msg_t;
 class x_buf_pool_t;
 

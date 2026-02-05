@@ -1,0 +1,11 @@
+/build/
+/s3_other/
+/.vscode/
+/.vs/
+/out/
+/cmake-build-debug/
+/cmake-build-release/
+/cmake-build-debug-coverage/
+/cmake-build-release-coverage/
+/cmake-build-debug-coverage-sanitize/
+/cmake-build-release-coverage-sanitize/

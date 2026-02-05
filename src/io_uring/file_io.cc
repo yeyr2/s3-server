@@ -7,7 +7,7 @@
 #include <cerrno>
 #include <cstring>
 
-namespace io_uring {
+namespace uring {
 
 namespace {
 

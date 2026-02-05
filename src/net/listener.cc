@@ -21,8 +21,10 @@ int listen_tcp(const std::string& addr, uint16_t port) {
     sa.sin_family = AF_INET;
     sa.sin_port = htons(port);
     if (addr.empty() || addr == "0.0.0.0") {
+        //所有网卡
         sa.sin_addr.s_addr = INADDR_ANY;
     } else {
+        //地址字符串转成网络字节序的二进制
         if (inet_pton(AF_INET, addr.c_str(), &sa.sin_addr) <= 0) {
             close(fd);
             return -1;

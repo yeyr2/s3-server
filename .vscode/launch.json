@@ -2,16 +2,36 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Debug s3server",
+      "type": "cppdbg",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/build/s3server",
+      "args": [],
+      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "为 gdb 启用整齐打印",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
       "name": "C/C++ Runner: Debug Session",
       "type": "cppdbg",
       "request": "launch",
+      "preLaunchTask": "build",
       "args": [],
       "stopAtEntry": false,
-      "externalConsole": true,
-      "cwd": "f:/s3 server",
-      "program": "f:/s3 server/build/Debug/outDebug",
+      "externalConsole": false,
+      "cwd": "${workspaceFolder}/build",
+      "program": "${workspaceFolder}/build/s3server",
       "MIMode": "gdb",
-      "miDebuggerPath": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
       "setupCommands": [
         {
           "description": "Enable pretty-printing for gdb",

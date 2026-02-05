@@ -6,6 +6,7 @@
 #include <ctime>
 #include <cstring>
 #include <string>
+#include <iostream>
 
 namespace s3 {
 
@@ -30,9 +31,10 @@ bool verify_query_signature(const http::HttpRequest& req, const s3config::Config
         return false;
     int64_t expires = 0;
     for (char c : expires_str) { if (c >= '0' && c <= '9') expires = expires * 10 + (c - '0'); }
-    if (::time(nullptr) > static_cast<time_t>(expires))
+    std::cout << ::time(nullptr) << std::endl;
+    if (static_cast<int64_t>(std::time(nullptr)) > expires)
         return false;
-    // StringToSign for query auth v2: Method + "\n" + Content-MD5 + "\n" + Content-Type + "\n" + Expires + "\n" + CanonicalizedAmzHeaders + CanonicalizedResource
+    // StringToSign v2: Method + "\n" + Content-MD5 + "\n" + Content-Type + "\n" + Expires + "\n" + CanonicalizedAmzHeaders + CanonicalizedResource
     std::string string_to_sign;
     string_to_sign += req.method;
     string_to_sign += '\n';
@@ -42,11 +44,19 @@ bool verify_query_signature(const http::HttpRequest& req, const s3config::Config
     string_to_sign += '\n';
     string_to_sign += expires_str;
     string_to_sign += '\n';
-    // CanonicalizedAmzHeaders: empty if no x-amz-* headers (we don't parse them in http_parser for now)
-    // CanonicalizedResource: path-style = path only
     string_to_sign += req.path;
     std::string expected_sig = hmac_sha1_base64(config.secret_key, string_to_sign);
+    std::cout << expected_sig << " " << sig_from_client << std::endl;
+    if (expected_sig != sig_from_client) {
+        std::cerr << "[S3 auth] Signature does not match. Server used this StringToSign (5 lines):\n"
+                  << "  line1(Method):     [" << req.method << "]\n"
+                  << "  line2(Content-MD5): [" << req.content_md5 << "]\n"
+                  << "  line3(Content-Type):[" << req.content_type << "]\n"
+                  << "  line4(Expires):     [" << expires_str << "]\n"
+                  << "  line5(Path):        [" << req.path << "]\n"
+                  << "  Client must sign exactly this (with \\n between lines, no trailing \\n after path).\n";
+    }
     return expected_sig == sig_from_client;
 }
 
-} // namespace s3
+} 

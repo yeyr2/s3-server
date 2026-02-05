@@ -27,7 +27,7 @@ struct Object {
     std::string acl;
 };
 
-// 元数据存储：方案 A 行式文本单文件 s3_meta.dat（参见架构设计 3.5.2）
+// 元数据存储：方案 A 行式文本单文件 s3_meta.dat
 // 文件路径：<data_root>/s3_meta.dat；首行 N\t<bucket_next_id>\t<object_next_id>；
 // 桶行 B\t<id>\t<name>\t<created_at>\t<owner_id>；对象行 O\t<id>\t<bucket_id>\t<key>\t<size>\t<last_modified>\t<etag>\t<storage_path>\t<acl>；字段禁止 \t \n；写回先写临时文件再 rename。
 class MetaStore {
@@ -42,6 +42,8 @@ public:
 
     // 持久化：将内存数据按行式格式写回 <data_root>/s3_meta.dat（经临时文件 s3_meta.dat.tmp 再 rename）
     bool save();
+    // save() 失败时原因（供日志），调用 save() 后立即读
+    const std::string& last_save_error() const { return last_save_error_; }
 
     // 桶：按名称查；创建（owner_id 为 AccessKey）；删除（按 id）；创建返回 id，已存在返回 0
     const Bucket* get_bucket_by_name(const std::string& name) const;
@@ -63,6 +65,7 @@ private:
     std::vector<Bucket> buckets_;
     std::vector<Object> objects_;
     mutable std::mutex mutex_;
+    std::string last_save_error_;  // save() 失败时写入原因
 
     std::string meta_file_path() const;
     std::string meta_file_path_tmp() const;

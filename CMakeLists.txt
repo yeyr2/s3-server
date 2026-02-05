@@ -3,14 +3,25 @@ project(s3server)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_BUILD_TYPE Debug)
 
-# OpenSSL（S3 Query 签名验签），需设置 OPENSSL_ROOT_DIR（环境变量或 cmake -D）
-if(DEFINED ENV{OPENSSL_ROOT_DIR})
-    set(OPENSSL_ROOT_DIR "$ENV{OPENSSL_ROOT_DIR}")
+# 使用系统 OpenSSL（避免混用 MSYS2 的 MinGW 库导致 R_AMD64_IMAGEBASE 链接错误）
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" AND EXISTS "/usr/lib/x86_64-linux-gnu/libcrypto.so")
+  set(OPENSSL_FOUND TRUE)
+  set(OPENSSL_INCLUDE_DIR "/usr/include")
+  set(OPENSSL_CRYPTO_LIBRARY "/usr/lib/x86_64-linux-gnu/libcrypto.so")
+  set(OPENSSL_SSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libssl.so")
+  add_library(OpenSSL::Crypto SHARED IMPORTED)
+  set_target_properties(OpenSSL::Crypto PROPERTIES IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}" INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}")
+  add_library(OpenSSL::SSL SHARED IMPORTED)
+  set_target_properties(OpenSSL::SSL PROPERTIES IMPORTED_LOCATION "${OPENSSL_SSL_LIBRARY}" INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}" INTERFACE_LINK_LIBRARIES OpenSSL::Crypto)
+  message(STATUS "Using system OpenSSL: ${OPENSSL_CRYPTO_LIBRARY}")
+else()
+  find_package(OpenSSL REQUIRED)
 endif()
-find_package(OpenSSL REQUIRED)
 
-# liburing：本地文件读写仅使用 io_uring，必须找到
+
+# liburing：本地文件读写使用 io_uring，必须找到
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(URING QUIET liburing)
@@ -47,11 +58,10 @@ set(SOURCES
 
 add_executable(s3server ${SOURCES})
 
-if(APPLE OR NOT UNIX)
-    message(FATAL_ERROR "此项目需在 Linux 上编译，当前: ${CMAKE_SYSTEM_NAME}")
-endif()
-
-target_compile_options(s3server PRIVATE -Wall -Wextra -O2)
+# Debug 用 -O0 才能稳定命中断点；Release 用 -O2
+target_compile_options(s3server PRIVATE -Wall -Wextra
+    $<$<CONFIG:Debug>:-O0 -g>
+    $<$<CONFIG:Release>:-O2>)
 target_compile_definitions(s3server PRIVATE _GNU_SOURCE)
 
 target_include_directories(s3server PRIVATE

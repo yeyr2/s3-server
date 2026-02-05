@@ -28,7 +28,7 @@ static uint32_t parse_uint(const char* s, uint32_t def) {
 }
 
 void load(Config& out) {
-    out.data_root = getenv_default("S3_DATA_ROOT", "/tmp/s3data");
+    out.data_root = getenv_default("S3_DATA_ROOT", "/home/yr2/s3data");
     out.access_key = getenv_default("S3_ACCESS_KEY", "testkey");
     out.secret_key = getenv_default("S3_SECRET_KEY", "testsecret");
     out.listen_addr = getenv_default("S3_LISTEN_ADDR", "0.0.0.0");

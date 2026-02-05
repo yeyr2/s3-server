@@ -43,7 +43,7 @@ std::vector<std::string> split_line(const std::string& line) {
     return out;
 }
 
-} // namespace
+} 
 
 std::string MetaStore::meta_file_path() const {
     std::string p = data_root_;
@@ -116,10 +116,14 @@ bool MetaStore::load(const std::string& data_root) {
 
 bool MetaStore::save() {
     std::lock_guard<std::mutex> lock(mutex_);
+    last_save_error_.clear();
     std::string path = meta_file_path();
     std::string path_tmp = meta_file_path_tmp();
     std::ofstream f(path_tmp);
-    if (!f.is_open()) return false;
+    if (!f.is_open()) {
+        last_save_error_ = path_tmp + ": " + strerror(errno);
+        return false;
+    }
 
     // 首行 N\t<bucket_next_id>\t<object_next_id>
     f << "N\t" << next_bucket_id_ << "\t" << next_object_id_ << "\n";
@@ -130,8 +134,14 @@ bool MetaStore::save() {
           << o.last_modified << "\t" << o.etag << "\t" << o.storage_path << "\t" << o.acl << "\n";
 
     f.close();
-    if (!f.good()) return false;
-    if (rename(path_tmp.c_str(), path.c_str()) != 0) return false;
+    if (!f.good()) {
+        last_save_error_ = "write failed: " + path_tmp;
+        return false;
+    }
+    if (rename(path_tmp.c_str(), path.c_str()) != 0) {
+        last_save_error_ = std::string("rename to ") + path + ": " + strerror(errno);
+        return false;
+    }
     return true;
 }
 

@@ -2,6 +2,7 @@
   "cmake.configureSettings": {
     "OPENSSL_ROOT_DIR": "C:/Program Files/OpenSSL-Win64"
   },
+  "cmake.scriptPath": "${workspaceFolder}/CMakeLists.txt",
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",
   "C_Cpp_Runner.debuggerPath": "gdb",

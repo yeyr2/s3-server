@@ -6,7 +6,7 @@
 
 #include <sys/types.h>  /* ssize_t (POSIX, WSL/Ubuntu) */
 
-namespace io_uring {
+namespace uring {
 
 // 使用 io_uring 读整个文件到 buf（最多 capacity 字节）。
 // 成功返回读到的字节数，失败返回 -1。
