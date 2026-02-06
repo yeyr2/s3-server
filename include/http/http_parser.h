@@ -14,6 +14,6 @@ bool parse_request(const x_msg_t& msg, HttpRequest& req);
 // 规范化路径：去掉多余 /，禁止 ..
 void normalize_path(std::string& path);
 
-} // namespace http
+}
 
 #endif

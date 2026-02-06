@@ -9,7 +9,7 @@
 
 namespace meta {
 
-// 参见架构设计 3.5.1：buckets / objects 表结构
+// buckets / objects 表结构
 struct Bucket {
     int64_t id{0};
     std::string name;
@@ -36,7 +36,7 @@ struct User {
     std::string created_at;
 };
 
-// 元数据存储：方案 A 行式文本单文件 s3_meta.dat
+// 元数据存储
 // 文件路径：<data_root>/s3_meta.dat；首行 N\t<bucket_next_id>\t<object_next_id>；
 // 桶行 B\t<id>\t<name>\t<created_at>\t<owner_id>；对象行 O\t<id>\t<bucket_id>\t<key>\t<size>\t<last_modified>\t<etag>\t<storage_path>\t<acl>；字段禁止 \t \n；写回先写临时文件再 rename。
 class MetaStore {
@@ -98,6 +98,6 @@ private:
     std::string user_dat_path() const;  // <data_root>/user.dat
 };
 
-} // namespace meta
+}
 
 #endif

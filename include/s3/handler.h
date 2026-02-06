@@ -15,6 +15,6 @@ namespace s3 {
 bool handle_request(const http::HttpRequest& req, const s3config::Config& config,
     meta::MetaStore& store, x_msg_t& out, x_buf_pool_t& pool, const x_msg_t* body_msg);
 
-} // namespace s3
+}
 
 #endif

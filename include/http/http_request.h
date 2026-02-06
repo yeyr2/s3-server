@@ -19,10 +19,10 @@ struct HttpRequest {
     // 从 query 字符串中按 key 取值（用于 AWSAccessKeyId, Signature, Expires 等）
     std::string get_query_param(const std::string& key) const;
 
-    // 路径是否视为桶：路径以 / 结束或只有一层
+    // 路径是否视为桶：路径以 / 结束或只有一层（废弃：使用新规则）
     bool is_bucket_path() const;
 };
 
-} // namespace http
+}
 
 #endif

@@ -13,6 +13,6 @@ namespace s3 {
 bool verify_query_signature(const http::HttpRequest& req, const s3config::Config& config,
                             const meta::MetaStore& store);
 
-} // namespace s3
+} 
 
 #endif

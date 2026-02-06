@@ -20,6 +20,6 @@ void write_error_response(x_msg_t& out, x_buf_pool_t& pool, int status_code,
 // 成功体：HTTP 200 + JSON（若 json_body 为空则写 {"code":1}）
 void write_success_response(x_msg_t& out, x_buf_pool_t& pool, const char* json_body = nullptr, size_t json_len = 0);
 
-} // namespace s3
+} 
 
 #endif

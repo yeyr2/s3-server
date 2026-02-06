@@ -31,6 +31,7 @@ static std::string urldecode_param_value(const std::string& v) {
     return out;
 }
 
+// 废弃
 bool HttpRequest::is_bucket_path() const {
     std::string p = path;
     while (!p.empty() && is_path_sep(p.back())) p.pop_back();

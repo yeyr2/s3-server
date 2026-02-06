@@ -19,6 +19,6 @@ struct Config {
 // 从环境变量加载，缺省使用默认值
 void load(Config& out);
 
-} // namespace s3config
+}
 
 #endif

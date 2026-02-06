@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <string>
 
-#include <sys/types.h>  /* ssize_t (POSIX, WSL/Ubuntu) */
+#include <sys/types.h>  
 
 namespace uring {
 
