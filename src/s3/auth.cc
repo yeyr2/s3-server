@@ -52,7 +52,7 @@ bool verify_query_signature(const http::HttpRequest& req, const s3config::Config
     string_to_sign += '\n';
     string_to_sign += req.path;
     std::string expected_sig = hmac_sha1_base64(secret, string_to_sign);
-    std::cout << string_to_sign << " " << secret << " " << expected_sig << " " << sig_from_client << std::endl;
+    std::cout << expected_sig << " " << sig_from_client << std::endl;
     if (expected_sig != sig_from_client) {
         std::cerr << "[S3 auth] Signature does not match. Server used this StringToSign (5 lines):\n"
                   << "  line1(Method):     [" << req.method << "]\n"
