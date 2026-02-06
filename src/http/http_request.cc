@@ -7,7 +7,7 @@ namespace http {
 
 static bool is_path_sep(char c) { return c == '/'; }
 
-// 对 query 参数值做 URL 解码：仅解码 %XX，不把 + 转为空格（Signature 为 Base64，含 +）
+// 对 query 参数值做 URL 解码
 static std::string urldecode_param_value(const std::string& v) {
     std::string out;
     out.reserve(v.size());
@@ -25,7 +25,7 @@ static std::string urldecode_param_value(const std::string& v) {
             out += static_cast<char>((hi << 4) | lo);
             i += 2;
         } else {
-            out += v[i];  // 保留 + 等字符，不把 + 当空格（Base64 签名需要 +）
+            out += v[i];  // 保留 + 等字符（Base64 签名需要）
         }
     }
     return out;
@@ -60,4 +60,4 @@ std::string HttpRequest::get_query_param(const std::string& key) const {
     return {};
 }
 
-} // namespace http
+}

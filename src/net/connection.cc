@@ -11,6 +11,8 @@
 namespace net {
 
 static const size_t kMaxHeader = 65536;
+// 限制 body 大小，防止 Content-Length 导致 OOM
+static const int64_t kMaxContentLength = 1024 * 1024 * 1024 ;  // 1024MB
 
 
 int read_request(int fd, x_msg_t& msg, x_buf_pool_t& pool, int64_t& content_length_out) {
@@ -63,7 +65,12 @@ int read_request(int fd, x_msg_t& msg, x_buf_pool_t& pool, int64_t& content_leng
         if (!p) break;
         ++p;
     }
-    content_length_out = cl;
+    // 无 Content-Length 时视为无 body（如 GET）；仅当存在且非法或过大时拒绝
+    if (cl >= 0 && cl > kMaxContentLength) {
+        content_length_out = -1;
+        return -1;  // Content-Length 过大，拒绝请求
+    }
+    content_length_out = (cl >= 0) ? cl : 0;
     if (cl > 0 && total < header_len + static_cast<size_t>(cl)) {
         size_t need = header_len + static_cast<size_t>(cl) - total;
         while (need > 0) {

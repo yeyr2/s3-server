@@ -1,6 +1,7 @@
 #include "s3/auth.h"
 #include "config/config.h"
 #include "http/http_request.h"
+#include "meta/meta.h"
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <ctime>
@@ -21,17 +22,22 @@ static std::string hmac_sha1_base64(const std::string& key, const std::string& d
     return std::string(reinterpret_cast<char*>(buf), static_cast<size_t>(n));
 }
 
-bool verify_query_signature(const http::HttpRequest& req, const s3config::Config& config) {
+bool verify_query_signature(const http::HttpRequest& req, const s3config::Config& config,
+                            const meta::MetaStore& store) {
     std::string access_key = req.get_query_param("AWSAccessKeyId");
     std::string sig_from_client = req.get_query_param("Signature");
     std::string expires_str = req.get_query_param("Expires");
     if (access_key.empty() || sig_from_client.empty() || expires_str.empty())
         return false;
-    if (access_key != config.access_key)
+    std::string secret = store.get_secret_by_access_key(access_key);
+    if (secret.empty() && access_key == config.access_key)
+        secret = config.secret_key;
+    if (secret.empty()){
         return false;
+    }
+    
     int64_t expires = 0;
     for (char c : expires_str) { if (c >= '0' && c <= '9') expires = expires * 10 + (c - '0'); }
-    std::cout << ::time(nullptr) << std::endl;
     if (static_cast<int64_t>(std::time(nullptr)) > expires)
         return false;
     // StringToSign v2: Method + "\n" + Content-MD5 + "\n" + Content-Type + "\n" + Expires + "\n" + CanonicalizedAmzHeaders + CanonicalizedResource
@@ -45,8 +51,8 @@ bool verify_query_signature(const http::HttpRequest& req, const s3config::Config
     string_to_sign += expires_str;
     string_to_sign += '\n';
     string_to_sign += req.path;
-    std::string expected_sig = hmac_sha1_base64(config.secret_key, string_to_sign);
-    std::cout << expected_sig << " " << sig_from_client << std::endl;
+    std::string expected_sig = hmac_sha1_base64(secret, string_to_sign);
+    std::cout << string_to_sign << " " << secret << " " << expected_sig << " " << sig_from_client << std::endl;
     if (expected_sig != sig_from_client) {
         std::cerr << "[S3 auth] Signature does not match. Server used this StringToSign (5 lines):\n"
                   << "  line1(Method):     [" << req.method << "]\n"

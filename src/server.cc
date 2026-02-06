@@ -76,7 +76,7 @@ static void handle_client(int fd, x_buf_pool_t& pool, const s3config::Config& co
         if (req.content_length >= 0) std::cout << " Content-Length: " << req.content_length;
         std::cout << std::endl;
     }
-    if (!s3::verify_query_signature(req, config)) {
+    if (!s3::verify_query_signature(req, config, store)) {
         x_msg_t resp_msg;
         s3::write_error_response(resp_msg, pool, 403, "AccessDenied", "Signature does not match");
         net::write_response(fd, resp_msg);
@@ -113,6 +113,16 @@ int main() {
     }
     if (!store.load(config.data_root)) {
         std::cerr << "meta load failed: data_root=" << config.data_root << std::endl;
+        return 1;
+    }
+    // 先加入 root，再读取 user.dat
+    store.ensure_root_user(config.access_key, config.secret_key);
+    if (!store.load_user_dat()) {
+        std::cerr << "meta load_user_dat failed" << std::endl;
+        return 1;
+    }
+    if (!store.save()) {
+        std::cerr << "meta save failed (user.dat): " << store.last_save_error() << std::endl;
         return 1;
     }
     x_buf_pool_t pool(config.buffer_payload_size, config.buffer_count);

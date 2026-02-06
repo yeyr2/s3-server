@@ -62,4 +62,4 @@ void write_success_response(x_msg_t& out, x_buf_pool_t& pool, const char* json_b
     write_response(out, pool, 200, "OK", json_body, json_len, "application/json");
 }
 
-} // namespace s3
+}

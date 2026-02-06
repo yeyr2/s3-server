@@ -96,4 +96,4 @@ bool parse_request(const x_msg_t& msg, HttpRequest& req) {
     return true;
 }
 
-} // namespace http
+} 
